@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { exportBackup, importBackupFromPicker } from '../../services/backupService';
+import { ensureNotificationPermission, rescheduleDigest } from '../../services/digest';
 import { testConnection } from '../../core/llmClient';
 import { DEFAULT_BASE_URL, DEFAULT_MODEL, WHISPER_MODELS, type WhisperModelId } from '../../core/settings';
 import { retryAll } from '../../services/pipeline';
@@ -27,6 +29,8 @@ export default function SettingsScreen() {
   const [dl, setDl] = useState<DownloadState>(getDownloadState());
   const [, force] = useState(0);
   const [retention, setRetention] = useState(String(s.audioRetentionDays));
+  const [digestTime, setDigestTime] = useState(`${String(s.digestHour).padStart(2, '0')}:${String(s.digestMinute).padStart(2, '0')}`);
+  const [dataMsg, setDataMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // keep the form in sync when saved settings change (adjust-state-during-render pattern)
   const [synced, setSynced] = useState(s);
@@ -35,6 +39,7 @@ export default function SettingsScreen() {
     setBaseUrl(s.baseUrl);
     setModel(s.model);
     setRetention(String(s.audioRetentionDays));
+    setDigestTime(`${String(s.digestHour).padStart(2, '0')}:${String(s.digestMinute).padStart(2, '0')}`);
   }
 
   useEffect(() => {
@@ -201,6 +206,81 @@ export default function SettingsScreen() {
           keyboardType="number-pad"
           style={[...input, { width: 100 }]}
         />
+      </View>
+
+      <Text style={[styles.h, { color: p.text }]}>Evening digest</Text>
+      <View style={card}>
+        <View style={[styles.row, { marginTop: 0, justifyContent: 'space-between' }]}>
+          <Text style={{ color: p.text, flex: 1 }}>Daily summary notification with today’s counts and the top recurring thought</Text>
+          <Switch
+            value={s.digestEnabled}
+            onValueChange={async (v) => {
+              if (v && !(await ensureNotificationPermission())) {
+                Alert.alert('Notifications are off', 'Allow notifications for Idea Bucket in Android settings to get the digest.');
+                return;
+              }
+              await updateSettings({ digestEnabled: v });
+              void rescheduleDigest();
+            }}
+          />
+        </View>
+        <Text style={[styles.label, { color: p.textDim }]}>Time (24h, HH:MM)</Text>
+        <TextInput
+          value={digestTime}
+          onChangeText={setDigestTime}
+          onEndEditing={async () => {
+            const m = digestTime.trim().match(/^(\d{1,2})[:.](\d{2})$/);
+            const h = m ? Number(m[1]) : NaN;
+            const min = m ? Number(m[2]) : NaN;
+            if (!m || h > 23 || min > 59) {
+              setDigestTime(`${String(s.digestHour).padStart(2, '0')}:${String(s.digestMinute).padStart(2, '0')}`);
+              return;
+            }
+            await updateSettings({ digestHour: h, digestMinute: min });
+            if (s.digestEnabled) await ensureNotificationPermission();
+            void rescheduleDigest();
+          }}
+          keyboardType="numbers-and-punctuation"
+          style={[...input, { width: 100 }]}
+        />
+      </View>
+
+      <Text style={[styles.h, { color: p.text }]}>Your data</Text>
+      <View style={card}>
+        <Text style={[styles.hint, { color: p.textDim }]}>
+          Export everything (items, transcripts, settings; not audio, not your API key) to a JSON file, or import a previous export. Import adds what is missing and never overwrites.
+        </Text>
+        <View style={[styles.row, { marginTop: 0 }]}>
+          <Pressable
+            onPress={async () => {
+              try {
+                const r = await exportBackup();
+                setDataMsg({ ok: true, text: `Exported ${r}.` });
+              } catch (e) {
+                setDataMsg({ ok: false, text: `Export failed: ${(e as Error).message}` });
+              }
+            }}
+            style={[styles.btn, { borderColor: p.border, borderWidth: 1 }]}
+          >
+            <Ionicons name="share-outline" size={16} color={p.accent} />
+            <Text style={{ color: p.accent, marginLeft: 6, fontWeight: '600' }}>Export</Text>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              try {
+                const r = await importBackupFromPicker();
+                if (r) setDataMsg({ ok: true, text: r });
+              } catch (e) {
+                setDataMsg({ ok: false, text: `Import failed: ${(e as Error).message}` });
+              }
+            }}
+            style={[styles.btn, { borderColor: p.border, borderWidth: 1 }]}
+          >
+            <Ionicons name="download-outline" size={16} color={p.accent} />
+            <Text style={{ color: p.accent, marginLeft: 6, fontWeight: '600' }}>Import</Text>
+          </Pressable>
+        </View>
+        {dataMsg ? <Text style={{ color: dataMsg.ok ? p.ok : p.danger, marginTop: 8 }}>{dataMsg.text}</Text> : null}
       </View>
     </ScrollView>
   );

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { describeDueDate } from '../core/dates';
+import { describeDueDate, localDateString } from '../core/dates';
 import type { Item } from '../core/types';
 import * as repo from '../db/repo';
 import { useQuery } from './hooks';
@@ -37,7 +37,7 @@ export function ItemRow({ item, compact = false }: { item: Item; compact?: boole
           <TypeIcon type={item.type} size={13} />
           {item.person ? <Text style={[styles.metaText, { color: p.textDim }]}>{item.person}</Text> : null}
           {item.due_date ? (
-            <Text style={[styles.metaText, { color: item.due_date < new Date().toISOString().slice(0, 10) && !done ? p.danger : p.textDim }]}>
+            <Text style={[styles.metaText, { color: item.due_date < localDateString(new Date()) && !done ? p.danger : p.textDim }]}>
               ⏰ {describeDueDate(item.due_date, new Date())}
             </Text>
           ) : null}

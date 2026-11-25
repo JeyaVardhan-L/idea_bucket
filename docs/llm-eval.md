@@ -1,6 +1,6 @@
 # LLM extraction eval
 
-Model: `nvidia/nemotron-3-ultra-550b-a55b` · Endpoint: `https://integrate.api.nvidia.com/v1` · Fixed date: 2026-11-25 (Wednesday) · Run: 2026-11-25T17:30:29.861Z
+Model: `nvidia/nemotron-3-ultra-550b-a55b` · Endpoint: `https://integrate.api.nvidia.com/v1` · Fixed date: 2026-11-25 (Wednesday) · Run: 2026-11-25T18:39:37.518Z
 
 **Score: 15/15** (API calls this run: 15)
 
@@ -8,21 +8,32 @@ A case passes only when the item count is exact and every expected item has the 
 
 | # | Case | Result | Time | Problems |
 |---|------|--------|------|----------|
-| 1 | multi-thought ramble | ✅ | 57.0s |  |
-| 2 | name + relative deadline | ✅ | 8.2s |  |
-| 3 | pure remember fact | ✅ | 8.1s |  |
-| 4 | near-duplicate of existing call | ✅ | 7.0s |  |
-| 5 | duplicate with added detail | ✅ | 24.3s |  |
-| 6 | delegate with person | ✅ | 52.5s |  |
-| 7 | learn topic | ✅ | 42.5s |  |
-| 8 | related to existing | ✅ | 17.7s |  |
-| 9 | two calls + numbers | ✅ | 14.8s |  |
-| 10 | filler-heavy single task | ✅ | 9.8s |  |
-| 11 | repeat of existing learn | ✅ | 28.1s |  |
-| 12 | insight + reason | ✅ | 9.6s |  |
-| 13 | mixed: duplicate + new | ✅ | 12.6s |  |
-| 14 | end of month deadline + delegate follow-up | ✅ | 14.8s |  |
-| 15 | noise only | ✅ | 2.8s |  |
+| 1 | multi-thought ramble | ✅ | 20.0s |  |
+| 2 | name + relative deadline | ✅ | 5.3s |  |
+| 3 | pure remember fact | ✅ | 13.5s |  |
+| 4 | near-duplicate of existing call | ✅ | 15.5s |  |
+| 5 | duplicate with added detail | ✅ | 9.8s |  |
+| 6 | delegate with person | ✅ | 13.9s |  |
+| 7 | learn topic | ✅ | 6.5s |  |
+| 8 | related to existing | ✅ | 18.4s |  |
+| 9 | two calls + numbers | ✅ | 15.1s |  |
+| 10 | filler-heavy single task | ✅ | 8.8s |  |
+| 11 | repeat of existing learn | ✅ | 10.3s |  |
+| 12 | insight + reason | ✅ | 6.9s |  |
+| 13 | mixed: duplicate + new | ✅ | 18.5s |  |
+| 14 | end of month deadline + delegate follow-up | ✅ | 12.5s |  |
+| 15 | noise only | ✅ | 1.7s |  |
+
+## Run history
+
+| Run | Prompt version | Score | Notes |
+|---|---|---|---|
+| 1 | initial (given prompt + additional rules), temperature 0.1 | 15/15 | |
+| 2 | same | 12/15 | Showed the model is nondeterministic: 2× enriched repeat marked `related` instead of `duplicate`; "before the 10th of December" became Dec 9 |
+| 3 | tuned: sharper duplicate-vs-related definition with examples **unrelated to the eval cases**, named dates are used as-is, temperature 0 | 14/15 | #14 marked `related` instead of `duplicate` |
+| 4 | same as 3 (this file's raw outputs) | **15/15** | |
+
+Final prompt: two consecutive full runs at 14/15 and 15/15 (target ≥ 13/15). Total API calls for the whole eval effort: ~70.
 
 ## Raw outputs
 
@@ -34,10 +45,10 @@ A case passes only when the item count is exact and every expected item has the 
 [
  {
   "type": "task",
-  "text": "Renew passport before it expires in March.",
+  "text": "Renew passport before it expires in March 2027.",
   "person": null,
   "due_date": "2027-03-31",
-  "excerpt": "first I really need to renew my passport because it expires in March, uh,",
+  "excerpt": "first I really need to renew my passport because it expires in March",
   "match": {
    "kind": "new",
    "id": null
@@ -48,7 +59,7 @@ A case passes only when the item count is exact and every expected item has the 
   "text": "Call Dr. Mehta to reschedule dentist appointment.",
   "person": "Dr. Mehta",
   "due_date": null,
-  "excerpt": "and then I should probably call the dentist, Dr. Mehta, to move my appointment.",
+  "excerpt": "and then I should probably call the dentist, Dr. Mehta, to move my appointment",
   "match": {
    "kind": "new",
    "id": null
@@ -56,7 +67,7 @@ A case passes only when the item count is exact and every expected item has the 
  },
  {
   "type": "idea",
-  "text": "Add live queue length to coffee shop app.",
+  "text": "Add live queue length display to coffee shop app.",
   "person": null,
   "due_date": null,
   "excerpt": "oh and also an idea, what if the coffee shop app showed live queue length",
@@ -96,7 +107,7 @@ A case passes only when the item count is exact and every expected item has the 
 [
  {
   "type": "remember",
-  "text": "The wifi password at the cabin is bluefin 4 4 7 1, all lowercase.",
+  "text": "The wifi password at the cabin is bluefin4471, all lowercase.",
   "person": null,
   "due_date": null,
   "excerpt": "just so I don't forget, the wifi password at the cabin is bluefin 4 4 7 1, all lowercase",
@@ -160,9 +171,9 @@ Existing items offered: 6
 [
  {
   "type": "delegate",
-  "text": "Delegate invoice reconciliation for Lisbon office to Marco this week.",
+  "text": "Get Marco to handle invoice reconciliation for the Lisbon office by end of this week because I don't have time",
   "person": "Marco",
-  "due_date": "2026-11-29",
+  "due_date": "2026-11-27",
   "excerpt": "I should get Marco to handle the invoice reconciliation for the Lisbon office this week, I don't have time",
   "match": {
    "kind": "new",
@@ -204,7 +215,7 @@ Existing items offered: 6
 [
  {
   "type": "task",
-  "text": "Find last year's donation receipts in the blue folder for tax return",
+  "text": "Find last year's donation receipts in the blue folder for the tax return",
   "person": null,
   "due_date": null,
   "excerpt": "for the tax thing I need to find last year's donation receipts first, they're probably in the blue folder",
@@ -224,10 +235,10 @@ Existing items offered: 6
 [
  {
   "type": "call",
-  "text": "Call the bank about the unrecognised 250 euro charge from 14 November.",
-  "person": "the bank",
+  "text": "Call the bank about the unrecognised €250 charge from the 14th.",
+  "person": "bank",
   "due_date": null,
-  "excerpt": "call the bank about the 250 euro charge from the 14th that I don't recognise",
+  "excerpt": "call the bank about the 250 euro charge from the 14th that I don't recognise.",
   "match": {
    "kind": "new",
    "id": null
@@ -235,7 +246,7 @@ Existing items offered: 6
  },
  {
   "type": "call",
-  "text": "Text Sam that I will be 20 minutes late tomorrow.",
+  "text": "Text Sam that I'll be 20 minutes late tomorrow.",
   "person": "Sam",
   "due_date": "2026-11-26",
   "excerpt": "text Sam that I'll be 20 minutes late tomorrow",
@@ -255,7 +266,7 @@ Existing items offered: 6
 [
  {
   "type": "task",
-  "text": "Book car in for MOT before 10th December at Halfords on Mill Road",
+  "text": "Book the car in for its MOT before 10th December at Halfords on Mill Road",
   "person": null,
   "due_date": "2026-12-10",
   "excerpt": "so like, you know, I mean basically, the the thing is I need to uh book the car in for its MOT, um, before the 10th of December at the Halfords on Mill Road",
@@ -277,7 +288,7 @@ Existing items offered: 6
 [
  {
   "type": "learn",
-  "text": "Learn Rust borrow checker",
+  "text": "Learn Rust ownership and borrowing, including the borrow checker",
   "person": null,
   "due_date": null,
   "excerpt": "I really need to get my head around the borrow checker in rust",
@@ -297,7 +308,7 @@ Existing items offered: 6
 [
  {
   "type": "remember",
-  "text": "Churn spikes when pricing changes without emailing customers first; always announce price changes two weeks ahead.",
+  "text": "Churn spikes when pricing changes without emailing customers first, so always announce price changes two weeks ahead.",
   "person": null,
   "due_date": null,
   "excerpt": "realisation: our churn spikes every time we change pricing without emailing customers first, so always announce price changes two weeks ahead",
@@ -319,7 +330,7 @@ Existing items offered: 6
 [
  {
   "type": "task",
-  "text": "Fix the squeaky garden gate hinge, maybe use WD-40",
+  "text": "Fix the squeaky garden gate hinge, maybe WD-40",
   "person": null,
   "due_date": null,
   "excerpt": "that gate is still squeaking, need to fix the hinge, maybe WD-40.",
@@ -333,7 +344,7 @@ Existing items offered: 6
   "text": "Order more printer ink, HP 305 cartridges",
   "person": null,
   "due_date": null,
-  "excerpt": "order more printer ink, the HP 305 cartridges",
+  "excerpt": "also new thing, order more printer ink, the HP 305 cartridges",
   "match": {
    "kind": "new",
    "id": null

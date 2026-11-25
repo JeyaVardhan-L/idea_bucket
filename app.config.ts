@@ -59,6 +59,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     './plugins/withAppShortcut',
     './plugins/withAndroidBuildTweaks',
+    './plugins/withQuickSettingsTile',
   ],
   experiments: { typedRoutes: false },
 });

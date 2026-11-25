@@ -9,7 +9,9 @@ TaskManager.defineTask(QUEUE_TASK, async () => {
   try {
     const { kick } = await import('./pipeline');
     const { rescheduleDigest } = await import('./digest');
+    const { runAudioRetention } = await import('./maintenance');
     await kick();
+    await runAudioRetention().catch(() => 0);
     await rescheduleDigest();
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch {

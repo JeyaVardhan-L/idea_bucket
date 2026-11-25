@@ -66,8 +66,7 @@ async function chat(cfg: LlmConfig, messages: ChatMessage[], fetchImpl: FetchLik
       body: JSON.stringify({
         model: cfg.model.trim(),
         messages,
-        temperature: 0.1,
-        top_p: 0.9,
+        temperature: 0,
         max_tokens: maxTokens,
         stream: false,
       }),
