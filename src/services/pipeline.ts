@@ -17,10 +17,13 @@ let rerun = false;
 let paused = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 
-/** Pause heavy work while the microphone is recording. */
-export function setPipelinePaused(p: boolean) {
+let activeRecordingId: string | null = null;
+
+/** Pause heavy work while the microphone is recording, and protect that capture from recovery. */
+export function setPipelinePaused(p: boolean, recordingId: string | null = null) {
   paused = p;
-  if (!p) kick();
+  activeRecordingId = p ? recordingId : null;
+  if (!p) void kick();
 }
 
 /** Starts processing the queue unless already running (then it runs again afterwards). */
@@ -74,6 +77,7 @@ async function processDue(): Promise<void> {
   const pending = (await repo.listCaptures(['recorded', 'transcribed'], 1000)).reverse();
   for (const c of pending) {
     if (paused) return;
+    if (c.id === activeRecordingId) continue;
     let cur: Capture | null = c;
     // a capture may go recorded → transcribed → processed in one pass
     for (let guard = 0; cur && guard < 3; guard++) {
@@ -181,6 +185,7 @@ export async function retryOne(id: string): Promise<void> {
 export async function recoverInterrupted(listOrphans: () => { uri: string; id: string; mtime: number }[]): Promise<void> {
   const stuck = await repo.listCaptures(['recording'], 100);
   for (const c of stuck) {
+    if (c.id === activeRecordingId) continue; // being recorded right now
     if (c.audio_path && fileExists(c.audio_path)) {
       await repo.updateCapture(c.id, { status: 'recorded', error: null, next_attempt_at: null });
     } else {
@@ -189,7 +194,7 @@ export async function recoverInterrupted(listOrphans: () => { uri: string; id: s
   }
   const known = new Set((await repo.capturesWithAudio()).map((c) => c.id));
   for (const o of listOrphans()) {
-    if (known.has(o.id)) continue;
+    if (known.has(o.id) || o.id === activeRecordingId) continue;
     const exists = await repo.getCapture(o.id);
     if (exists) {
       if (!exists.audio_path) await repo.updateCapture(o.id, { audio_path: o.uri });

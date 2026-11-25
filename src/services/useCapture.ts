@@ -94,13 +94,13 @@ export function useCapture() {
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       const settings = await getSettings();
       id = repo.newId();
+      setPipelinePaused(true, id);
       const file = recordingFile(id);
       await repo.insertCapture({
         id, audio_path: file.uri, transcript: null, status: 'recording', error: null,
         created_at: Date.now(), attempts: 0, next_attempt_at: null, duration_ms: null,
       });
       captureId.current = id;
-      setPipelinePaused(true);
       await stream.start();
       await stream.startFileRecordingAsync({ uri: file.uri, format: 'wav' });
       detector.current = new SilenceDetector({
