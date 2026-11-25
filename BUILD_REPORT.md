@@ -42,9 +42,10 @@ _See the sections below; they are updated at the end of the run._
 7. **Duplicate that the model links to an unknown id**: treated as a new item. Done items are not offered as duplicate candidates.
 8. **Audio retention**: deletes audio only for captures that already have a transcript. `0` days = keep forever.
 9. **Digest content**: Android local notifications have fixed text, so the digest is rescheduled on every data change and on app start/foreground, plus from the background task.
-10. **ABIs**: `arm64-v8a,x86_64` only (phones + emulator). This keeps whisper.cpp build time and APK size down. 32-bit-only phones are not supported.
+10. **ABIs**: `arm64-v8a` only, per the owner's CPU-budget instruction (it also roughly halves APK size and whisper.cpp build time). 32-bit-only phones and x86 emulators are not supported.
 11. **Versioning**: `versionCode` = GitHub Actions run number (always increasing). `versionName`/tag = `0.<PHASE file>.<run number>`.
 12. **Keystore**: PKCS12, RSA 4096, 100-year validity, random 32-char password. The backup is at `~/idea_bucket-keystore-BACKUP/` (outside the repo, mode 700).
+14. **CPU budget (owner instruction, mid-run)**: once the first local release build was done, all heavy work moved to GitHub Actions: Gradle/NDK builds, prebuild builds and full builds. Local work is limited to editing, git/gh, tsc, eslint, jest `--maxWorkers=1`, and the LLM eval, all under `nice`/`ionice`/`taskset`. The local emulator was shut down and **the emulator test is skipped from then on** (see Test results). Instead, CI verifies the APK contents: signature, the whisper native library, and the shortcut, widget, tile and microphone entries in the manifest.
 13. **Secret hygiene**: `.env*`, keystores and backups are git-ignored. There is a local pre-commit hook (`scripts/precommit-check.sh`) and a CI step that fail if the NVIDIA key prefix appears anywhere. The pattern is written split in those scripts so the repo itself never contains it.
 
 ## Known issues / limitations
