@@ -30,7 +30,18 @@ _Built unattended on 2026-11-25._
 - **Quick Settings tile** (stretch): "Record thought" tile in the notification shade.
 
 ## Test results
-_See the sections below; they are updated at the end of the run._
+
+| Check | Result |
+|---|---|
+| Unit + integration tests (jest, 10 suites) | **83/83 pass**: JSON extraction/repair, zod validation and normalisation, LLM client (auth header, retry-with-reminder, 429/5xx/network → transient, 401/404 → config, Retry-After), merge planner (new/duplicate/related, alias mapping, text refinement, one count per capture), queue state machine and backoff, audio retention, dates, settings persistence, WAV parsing/resampling, silence detector, filters/views, digest, backup round-trip. Also a **SQLite integration test** that runs the real repository SQL on Node's built-in SQLite: migrations, duplicate count/sources/links, transaction rollback keeps the capture queued, import never overwrites. |
+| `tsc --noEmit` (strict + noUncheckedIndexedAccess) | clean |
+| `expo lint` (eslint-config-expo incl. React Compiler rules) | clean |
+| `npx expo-doctor` | 20/20 checks pass (also runs in CI) |
+| JS bundle (`expo export`) | builds (also runs in CI) |
+| Live LLM eval (`scripts/eval-llm.ts`, 15 messy transcripts) | **15/15** on the final run, 14/15 on the run before it. See [docs/llm-eval.md](docs/llm-eval.md) for the full history, including a 12/15 run that drove the prompt tuning. |
+| CI (GitHub Actions) | green: typecheck → lint → tests → expo-doctor → bundle → prebuild → signed `assembleRelease` → `apksigner verify` → APK content checks (whisper `librnwhisper*.so` for arm64, shortcut, widget, tile and mic permission in the manifest) → GitHub Release |
+| Downloaded release APK | verified with `gh release download` plus `apksigner verify` (v2/v3 signature by `CN=Idea Bucket`, SHA-256 `ee90160a…fd19c`, the same certificate for every release) |
+| Device test | **Partial, then skipped by owner instruction.** Before the CPU-budget instruction, an early local build ran on an Android 15 x86_64 emulator: it launched without crashes (logcat clean); recording started, the live meter and timer worked, it auto-stopped on silence and the capture was queued ("1 processing"); Settings → **Test connection succeeded against NVIDIA NIM**; dark mode rendered correctly (screenshots in `docs/screenshots/`). The first Whisper model download on the emulator exposed a bug (file move after download), which was fixed (HF redirect resolved first, size verified, `.ok` marker instead of a move). Per the owner's later instruction, the emulator was shut down and no further device tests ran, so **the fixed model download and on-device transcription have not been exercised on a device**. |
 
 ## Decisions
 1. **LLM model**: `meta/llama-3.3-70b-instruct` was **not** in the NIM model list. I benchmarked the strongest general instruct models on a JSON task: `mistralai/mistral-large-4-1t-a52b` (45 s), `moonshotai/kimi-k3.1-pro` (>90 s timeout), `z-ai/glm-5.3-flash` (>90 s timeout), and `nvidia/nemotron-3-ultra-550b-a55b` (9 s, valid JSON, correct types). **Default: `nvidia/nemotron-3-ultra-550b-a55b`.**
@@ -49,6 +60,15 @@ _See the sections below; they are updated at the end of the run._
 13. **Secret hygiene**: `.env*`, keystores and backups are git-ignored. There is a local pre-commit hook (`scripts/precommit-check.sh`) and a CI step that fail if the NVIDIA key prefix appears anywhere. The pattern is written split in those scripts so the repo itself never contains it.
 
 ## Known issues / limitations
+- **Not verified on a real device**: on-device Whisper transcription, the fixed model download, the widget, the Quick Settings tile and the digest notification. They are covered by CI build and manifest checks only (see Test results). Check these first after installing.
+- The emulator has no real microphone input, so the speech → items flow was never run end to end on a device. The AI step itself is covered by the live eval and the queue/merge logic by tests.
+- The evening digest text is fixed when it is scheduled (an Android limitation). It is rescheduled on every change, app start and background run, but if the app is force-stopped the notification can show slightly stale counts.
+- Background processing uses Android WorkManager (expo-background-task, ≥ 15 min). Battery savers may delay it. Opening the app always processes the queue.
+- Recording stops if you leave the app (no foreground microphone service), but whatever was recorded is saved.
+- Whisper on a phone CPU is roughly 2–10× faster than real time for `base.en` on recent arm64 phones. Very long captures (up to the 15-minute cap) take a while to transcribe.
+- arm64-v8a only.
+- The LLM is nondeterministic. Duplicate-vs-related can occasionally go the "safe" way (`related`), which creates a linked item instead of bumping the count; nothing is lost.
+- Import merges by id and never overwrites; audio files are not part of backups.
 
 ## What the owner must do
 1. Install the APK from the latest release (allow "Install unknown apps").

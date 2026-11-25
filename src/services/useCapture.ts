@@ -66,19 +66,27 @@ export function useCapture() {
     } catch {
       /* already stopped */
     }
-    if (id) {
-      const audio = recordingFile(id).uri;
-      if (fileExists(audio)) {
-        await repo.updateCapture(id, { status: 'recorded', duration_ms: durationMs, error: null });
-      } else {
-        await repo.updateCapture(id, { status: 'failed', error: 'No audio was saved.' });
+    let saved = true;
+    try {
+      if (id) {
+        const audio = recordingFile(id).uri;
+        if (fileExists(audio)) {
+          await repo.updateCapture(id, { status: 'recorded', duration_ms: durationMs, error: null });
+        } else {
+          saved = false;
+          await repo.updateCapture(id, { status: 'failed', error: 'No audio was saved.' });
+        }
       }
+    } catch (e) {
+      // The WAV is on disk; start-up recovery will re-queue a row left in "recording".
+      console.warn('could not update capture after recording', e);
+    } finally {
+      captureId.current = null;
+      detector.current = null;
+      setPhase('idle', saved ? { savedAt: Date.now(), level: 0 } : { level: 0, error: 'Recording failed: no audio was saved.' });
+      setPipelinePaused(false);
+      void kick();
     }
-    captureId.current = null;
-    detector.current = null;
-    setPhase('idle', { savedAt: Date.now(), level: 0 });
-    setPipelinePaused(false);
-    void kick();
   }, [stream]);
   useEffect(() => {
     stopRef.current = stop;
