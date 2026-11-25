@@ -1,0 +1,109 @@
+name: Android release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      IB_VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from PHASE file
+        id: ver
+        run: |
+          PHASE=$(tr -d '[:space:]' < PHASE)
+          NAME="0.${PHASE}.${GITHUB_RUN_NUMBER}"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "IB_VERSION_NAME=$NAME" >> "$GITHUB_ENV"
+          echo "Building $NAME (versionCode $GITHUB_RUN_NUMBER)"
+
+      - name: Secret scan
+        run: |
+          # pattern is split so this file itself never contains it
+          if git grep -n "nvapi""-"; then echo "API key pattern found in repo"; exit 1; fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test -- --ci
+
+      - name: Expo prebuild
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('package-lock.json', 'android/build.gradle', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "ANDROID_KEYSTORE_BASE64 secret missing"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "IB_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        env:
+          IB_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          IB_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          IB_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g"
+
+      - name: Verify signature
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "$APK" | head -5
+          cp "$APK" "idea-bucket-${{ steps.ver.outputs.name }}.apk"
+          rm -f "$RUNNER_TEMP/release.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: idea-bucket-${{ steps.ver.outputs.name }}
+          path: idea-bucket-${{ steps.ver.outputs.name }}.apk
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.ver.outputs.name }}"
+          gh release create "$TAG" "idea-bucket-${{ steps.ver.outputs.name }}.apk" \
+            --target "$GITHUB_SHA" \
+            --title "Idea Bucket ${{ steps.ver.outputs.name }}" \
+            --notes "Phase $(tr -d '[:space:]' < PHASE) build from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s). Install the APK on Android (allow installing unknown apps)."
