@@ -55,7 +55,7 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm test -- --ci
+        run: npm test -- --ci --maxWorkers=2
 
       - name: Expo prebuild
         run: npx expo prebuild --platform android --clean --no-install

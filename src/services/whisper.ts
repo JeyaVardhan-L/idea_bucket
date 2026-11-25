@@ -8,10 +8,15 @@ export function modelFile(id: WhisperModelId): File {
   return new File(modelsDir(), WHISPER_MODELS[id].file);
 }
 
+/** Written only after a download is verified, so a half-written model is never used. */
+function okMarker(id: WhisperModelId): File {
+  return new File(modelsDir(), `${WHISPER_MODELS[id].file}.ok`);
+}
+
 export function isModelDownloaded(id: WhisperModelId): boolean {
   try {
     const f = modelFile(id);
-    return f.exists && (f.size ?? 0) > WHISPER_MODELS[id].sizeMb * 0.8 * 1024 * 1024;
+    return okMarker(id).exists && f.exists && (f.size ?? 0) > WHISPER_MODELS[id].sizeMb * 0.8 * 1024 * 1024;
   } catch {
     return false;
   }
@@ -42,19 +47,32 @@ export async function downloadModel(id: WhisperModelId): Promise<boolean> {
   if (dl.active) return false;
   if (isModelDownloaded(id)) return true;
   setDl({ model: id, progress: 0, error: null, active: true });
-  const part = new File(modelsDir(), `${WHISPER_MODELS[id].file}.part`);
+  const part = modelFile(id);
   try {
+    if (okMarker(id).exists) okMarker(id).delete();
     if (part.exists) part.delete();
-    await File.downloadFileAsync(whisperModelUrl(id), part, {
+    // Hugging Face answers with a redirect to its CDN; resolve it first so the native
+    // downloader always fetches the real file.
+    let url = whisperModelUrl(id);
+    try {
+      const head = await fetch(url, { method: 'HEAD', redirect: 'follow' });
+      if (head.ok && head.url) url = head.url;
+    } catch {
+      /* fall back to the original URL */
+    }
+    await File.downloadFileAsync(url, part, {
       idempotent: true,
       onProgress: ({ bytesWritten, totalBytes }) => {
         if (totalBytes > 0) setDl({ progress: bytesWritten / totalBytes });
       },
     });
-    const final = modelFile(id);
-    if (final.exists) final.delete();
-    part.move(final);
-    if (!isModelDownloaded(id)) throw new Error('Downloaded file is incomplete');
+    const got = new File(part.uri).size ?? 0;
+    const expected = WHISPER_MODELS[id].sizeMb * 0.8 * 1024 * 1024;
+    if (got < expected) throw new Error(`Downloaded file is incomplete (${Math.round(got / 1024)} KB)`);
+    const marker = okMarker(id);
+    marker.create({ overwrite: true });
+    marker.write(String(got));
+    if (!isModelDownloaded(id)) throw new Error(`Model file could not be verified (${Math.round(got / 1024)} KB)`);
     setDl({ progress: 1, active: false });
     return true;
   } catch (e) {
@@ -70,8 +88,7 @@ export async function downloadModel(id: WhisperModelId): Promise<boolean> {
 
 export function deleteModel(id: WhisperModelId): void {
   if (loaded?.id === id) void releaseContext();
-  const f = modelFile(id);
-  if (f.exists) f.delete();
+  for (const f of [okMarker(id), modelFile(id)]) if (f.exists) f.delete();
 }
 
 // ---- transcription ----

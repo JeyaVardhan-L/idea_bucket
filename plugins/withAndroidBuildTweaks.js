@@ -1,5 +1,5 @@
 // - Release signing from env vars (CI secrets / local keystore); falls back to debug signing if absent.
-// - Only arm64-v8a (phones) + x86_64 (emulator): whisper.cpp native builds are slow and large.
+// - Only arm64-v8a (modern phones): whisper.cpp native builds are slow and large.
 // - Keep whisper.rn classes if minification is ever enabled.
 const { withAppBuildGradle, withGradleProperties, withDangerousMod } = require('expo/config-plugins');
 const fs = require('fs');
@@ -34,7 +34,7 @@ module.exports = function withAndroidBuildTweaks(config) {
       c.modResults = c.modResults.filter((p) => !(p.type === 'property' && p.key === key));
       c.modResults.push({ type: 'property', key, value });
     };
-    set('reactNativeArchitectures', 'arm64-v8a,x86_64');
+    set('reactNativeArchitectures', 'arm64-v8a');
     set('org.gradle.jvmargs', '-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8');
     return c;
   });
