@@ -24,7 +24,7 @@ Open the app, tap, speak, leave. Recording stops by itself after about 4 seconds
 2. Open the file. If Android blocks it, allow your browser or file manager to **Install unknown apps** (Settings → Apps → *your browser* → Install unknown apps), then open the APK again.
 3. Updates install over the old version and keep your data, because every release is signed with the same key.
 
-Requires Android 7.0 or newer on an arm64 phone. The APK also includes x86_64 for emulators.
+Requires a 64-bit ARM (arm64-v8a) Android phone; that covers practically every phone from the last several years.
 
 ## First-run setup
 

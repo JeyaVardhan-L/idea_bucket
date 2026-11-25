@@ -2,7 +2,9 @@
 
 _Built unattended on 2026-11-25._
 
-**Latest APK:** https://github.com/JeyaVardhan-L/idea_bucket/releases/latest
+**Latest APK:** https://github.com/JeyaVardhan-L/idea_bucket/releases/tag/v0.3.6 (`idea-bucket-0.3.6.apk`, 43 MB, arm64-v8a, versionCode 6)
+
+Releases: v0.1.2 / v0.1.3 (Phase 1), v0.2.4 (Phase 2), v0.3.5 / v0.3.6 (Phase 3 + final review fixes). All CI runs after the first fix commit are green.
 
 ## What was built
 
@@ -40,7 +42,7 @@ _Built unattended on 2026-11-25._
 | JS bundle (`expo export`) | builds (also runs in CI) |
 | Live LLM eval (`scripts/eval-llm.ts`, 15 messy transcripts) | **15/15** on the final run, 14/15 on the run before it. See [docs/llm-eval.md](docs/llm-eval.md) for the full history, including a 12/15 run that drove the prompt tuning. |
 | CI (GitHub Actions) | green: typecheck → lint → tests → expo-doctor → bundle → prebuild → signed `assembleRelease` → `apksigner verify` → APK content checks (whisper `librnwhisper*.so` for arm64, shortcut, widget, tile and mic permission in the manifest) → GitHub Release |
-| Downloaded release APK | verified with `gh release download` plus `apksigner verify` (v2/v3 signature by `CN=Idea Bucket`, SHA-256 `ee90160a…fd19c`, the same certificate for every release) |
+| Downloaded release APK | verified with `gh release download` plus `apksigner verify` (APK Signature Scheme v2 by `CN=Idea Bucket`, SHA-256 `ee90160a…fd19c`, the same certificate for every release) |
 | Device test | **Partial, then skipped by owner instruction.** Before the CPU-budget instruction, an early local build ran on an Android 15 x86_64 emulator: it launched without crashes (logcat clean); recording started, the live meter and timer worked, it auto-stopped on silence and the capture was queued ("1 processing"); Settings → **Test connection succeeded against NVIDIA NIM**; dark mode rendered correctly (screenshots in `docs/screenshots/`). The first Whisper model download on the emulator exposed a bug (file move after download), which was fixed (HF redirect resolved first, size verified, `.ok` marker instead of a move). Per the owner's later instruction, the emulator was shut down and no further device tests ran, so **the fixed model download and on-device transcription have not been exercised on a device**. |
 
 ## Decisions
